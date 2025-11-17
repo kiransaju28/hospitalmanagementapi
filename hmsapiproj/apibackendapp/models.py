@@ -1,29 +1,15 @@
 from django.db import models
+from django.contrib.auth.models import User
 
-# Note: We are creating a custom user model 'SystemUser' to match your 'tblUser' table.
-# In a standard new Django project, we would usually use django.contrib.auth.models.User.
-
-class Role(models.Model):
-    role_id = models.CharField(max_length=10, primary_key=True)
-    role_name = models.CharField(max_length=100)
-
-    class Meta:
-        db_table = 'tblrole'
-
-    def __str__(self):
-        return self.role_name
-
-class SystemUser(models.Model):
-    user_id = models.CharField(max_length=10, primary_key=True)
-    role = models.ForeignKey(Role, on_delete=models.CASCADE)
-    username = models.CharField(max_length=100, unique=True)
-    password = models.CharField(max_length=255)
-
-    class Meta:
-        db_table = 'tblUser'
-
-    def __str__(self):
-        return self.username
+# Note: As requested, the custom 'SystemUser' and 'Role' models have been removed.
+# We are now using Django's built-in 'User' model.
+#
+# The 'Role' model was removed because it was only used by 'SystemUser'.
+# In a standard Django setup, you would use the built-in 'Group' model
+# to manage roles (e.g., 'Doctor', 'Staff', 'Admin') and assign Users to them.
+#
+# The 'Staff' and 'Doctor' models have been updated to link
+# to the standard django.contrib.auth.models.User.
 
 class Staff(models.Model):
     staff_id = models.CharField(max_length=10, primary_key=True)
@@ -32,7 +18,8 @@ class Staff(models.Model):
     joining_date = models.DateField(null=True, blank=True)
     mail_id = models.CharField(max_length=30, null=True, blank=True)
     mobileno = models.CharField(max_length=20, null=True, blank=True)
-    user = models.ForeignKey(SystemUser, on_delete=models.CASCADE)
+    # UPDATED: Changed from SystemUser to the built-in User model
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class Meta:
         db_table = 'tblstaff'
@@ -56,7 +43,8 @@ class Doctor(models.Model):
     contact_info = models.IntegerField(null=True, blank=True) # SQL said INT
     consultation_fee = models.IntegerField(null=True, blank=True)
     specialization = models.ForeignKey(Specialization, on_delete=models.CASCADE)
-    user = models.ForeignKey(SystemUser, on_delete=models.CASCADE)
+    # UPDATED: Changed from SystemUser to the built-in User model
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class Meta:
         db_table = 'tbldoctor'
