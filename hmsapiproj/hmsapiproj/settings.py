@@ -39,8 +39,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'apibackendapp',
-    'rest_framework.authtoken'
+    # 'apibackendapp',
+    'rest_framework.authtoken',
+    'rest_framework_simplejwt',
+    'admins'
 ]
 
 MIDDLEWARE = [
@@ -81,7 +83,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hms_api_proj_2025',
         'USER':'root',
-        'PASSWORD':'Password@123',
+        'PASSWORD':'Ashna@23',
         'HOST':'localhost',
         'PORT':3306
     }
