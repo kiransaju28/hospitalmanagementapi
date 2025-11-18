@@ -1,4 +1,15 @@
 from django.db import models
+from django.contrib.auth.models import User
+
+# Note: As requested, the custom 'SystemUser' and 'Role' models have been removed.
+# We are now using Django's built-in 'User' model.
+#
+# The 'Role' model was removed because it was only used by 'SystemUser'.
+# In a standard Django setup, you would use the built-in 'Group' model
+# to manage roles (e.g., 'Doctor', 'Staff', 'Admin') and assign Users to them.
+#
+# The 'Staff' and 'Doctor' models have been updated to link
+# to the standard django.contrib.auth.models.User.
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from .utils import generate_id
@@ -35,7 +46,8 @@ class Staff(models.Model):
     joining_date = models.DateField(null=True, blank=True)
     mail_id = models.CharField(max_length=30, null=True, blank=True)
     mobileno = models.CharField(max_length=20, null=True, blank=True)
-    user = models.ForeignKey(SystemUser, on_delete=models.CASCADE)
+    # UPDATED: Changed from SystemUser to the built-in User model
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class Meta:
         db_table = 'tblstaff'
@@ -59,7 +71,8 @@ class Doctor(models.Model):
     contact_info = models.IntegerField(null=True, blank=True) # SQL said INT
     consultation_fee = models.IntegerField(null=True, blank=True)
     specialization = models.ForeignKey(Specialization, on_delete=models.CASCADE)
-    user = models.ForeignKey(SystemUser, on_delete=models.CASCADE)
+    # UPDATED: Changed from SystemUser to the built-in User model
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class Meta:
         db_table = 'tbldoctor'
