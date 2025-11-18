@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'apibackendapp',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
+    'doctor'
     'admins',
     'reception'
 ]
@@ -84,7 +85,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hms_api_proj_2025',
         'USER':'root',
-        'PASSWORD':'Plamkoottathil7@',
+        'PASSWORD':'Ashna@23',
         'HOST':'localhost',
         'PORT':3306
     }
