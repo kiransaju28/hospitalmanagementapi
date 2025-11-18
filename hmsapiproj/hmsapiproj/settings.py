@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'apibackendapp',
-    'rest_framework.authtoken'
+    'rest_framework.authtoken',
+    'labtec'
 ]
 
 MIDDLEWARE = [
@@ -81,7 +82,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hms_api_proj_2025',
         'USER':'root',
-        'PASSWORD':'Password@123',
+        'PASSWORD':'Arunsk@2757',
         'HOST':'localhost',
         'PORT':3306
     }

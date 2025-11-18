@@ -1,4 +1,7 @@
 from django.db import models
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from .utils import generate_id
 
 # Note: We are creating a custom user model 'SystemUser' to match your 'tblUser' table.
 # In a standard new Django project, we would usually use django.contrib.auth.models.User.
@@ -149,7 +152,7 @@ class MedicineStock(models.Model):
         db_table = 'tblmedicinestock'
 
 class LabTest(models.Model):
-    lab_test_id = models.CharField(max_length=10, primary_key=True)
+    lab_test_id = models.CharField(max_length=10, primary_key=True, blank=True)
     lab_test_name = models.CharField(max_length=255)
     amount = models.IntegerField(null=True, blank=True)
     min_range = models.IntegerField(null=True, blank=True)
@@ -161,6 +164,17 @@ class LabTest(models.Model):
     
     def __str__(self):
         return self.lab_test_name
+
+
+@receiver(pre_save, sender=LabTest)
+def auto_id_labtest(sender, instance, **kwargs):
+    if not instance.lab_test_id:
+        instance.lab_test_id = generate_id(
+            prefix="LT",
+            model=LabTest,
+            field_name="lab_test_id"
+        )
+
 
 class LabTestPrescription(models.Model):
     lab_test_prescription_id = models.CharField(max_length=10, primary_key=True)
