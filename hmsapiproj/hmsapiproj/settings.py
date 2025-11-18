@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     'doctor'
     'admins',
     'reception'
+    'rest_framework.authtoken',
+    'labtec'
 ]
 
 MIDDLEWARE = [
@@ -85,7 +87,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hms_api_proj_2025',
         'USER':'root',
-        'PASSWORD':'Ashna@23',
+        'PASSWORD':'Password@123',
         'HOST':'localhost',
         'PORT':3306
     }
