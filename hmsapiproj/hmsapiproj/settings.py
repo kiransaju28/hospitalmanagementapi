@@ -42,7 +42,11 @@ INSTALLED_APPS = [
     'apibackendapp',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
-    'admins'
+    'doctor'
+    'admins',
+    'reception'
+    'rest_framework.authtoken',
+    'labtec'
 ]
 
 MIDDLEWARE = [
@@ -83,7 +87,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hms_api_proj_2025',
         'USER':'root',
-        'PASSWORD':'Ashna@23',
+        'PASSWORD':'Password@123',
         'HOST':'localhost',
         'PORT':3306
     }
@@ -134,10 +138,24 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    # Require authentication by default for all endpoints
+    # (You will override this in views if you have a public/login endpoint)
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    
+    # Optional: Enable pagination for large lists (like patients)
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 100
 }
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True, # New refresh token is issued when refreshing
+    
+    # Authentication header settings
+    'AUTH_HEADER_TYPES': ('Bearer',), # API requests will use 'Authorization: Bearer <token>'
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION'
 }

@@ -10,6 +10,34 @@ from django.contrib.auth.models import User
 #
 # The 'Staff' and 'Doctor' models have been updated to link
 # to the standard django.contrib.auth.models.User.
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+from .utils import generate_id
+
+# Note: We are creating a custom user model 'SystemUser' to match your 'tblUser' table.
+# In a standard new Django project, we would usually use django.contrib.auth.models.User.
+
+class Role(models.Model):
+    role_id = models.CharField(max_length=10, primary_key=True)
+    role_name = models.CharField(max_length=100)
+
+    class Meta:
+        db_table = 'tblrole'
+
+    def __str__(self):
+        return self.role_name
+
+class SystemUser(models.Model):
+    user_id = models.CharField(max_length=10, primary_key=True)
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
+    username = models.CharField(max_length=100, unique=True)
+    password = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = 'tblUser'
+
+    def __str__(self):
+        return self.username
 
 class Staff(models.Model):
     staff_id = models.CharField(max_length=10, primary_key=True)
@@ -137,7 +165,7 @@ class MedicineStock(models.Model):
         db_table = 'tblmedicinestock'
 
 class LabTest(models.Model):
-    lab_test_id = models.CharField(max_length=10, primary_key=True)
+    lab_test_id = models.CharField(max_length=10, primary_key=True, blank=True)
     lab_test_name = models.CharField(max_length=255)
     amount = models.IntegerField(null=True, blank=True)
     min_range = models.IntegerField(null=True, blank=True)
@@ -149,6 +177,17 @@ class LabTest(models.Model):
     
     def __str__(self):
         return self.lab_test_name
+
+
+@receiver(pre_save, sender=LabTest)
+def auto_id_labtest(sender, instance, **kwargs):
+    if not instance.lab_test_id:
+        instance.lab_test_id = generate_id(
+            prefix="LT",
+            model=LabTest,
+            field_name="lab_test_id"
+        )
+
 
 class LabTestPrescription(models.Model):
     lab_test_prescription_id = models.CharField(max_length=10, primary_key=True)
