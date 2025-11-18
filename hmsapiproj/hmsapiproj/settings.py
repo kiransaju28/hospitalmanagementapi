@@ -40,12 +40,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'apibackendapp',
-    'rest_framework.authtoken',
+    'rest_framework.authtoken',  # Keep this one
     'rest_framework_simplejwt',
-    'doctor'
-    'admins',
-    'reception'
-    'rest_framework.authtoken',
+    'doctor',
+    'admins',                    # You seemingly renamed 'doctoradmins' to 'admins', which is good
+    'reception',
+    # 'rest_framework.authtoken', <--- DELETE THIS LINE (It is a duplicate)
     'labtec'
 ]
 
