@@ -6,9 +6,10 @@ from .serializers import (
     PrescriptionSerializer, LabPrescriptionSerializer, SimpleMedicineSerializer, SimpleLabTestSerializer
 )
 from apibackendapp.models import (
-    Appointment, Consultation, Medicine, LabTest, LabReport, 
-    Prescription, LabPrescription, Doctor
+    Appointment, Consultation, Medicine, LabTest, LabTestReport, 
+    MedicinePrescription, LabTestPrescription, Doctor
 )
+from apibackendapp.permissions import IsDoctor
 
 class DoctorAppointmentViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -71,7 +72,7 @@ class LabReportViewSet(viewsets.ReadOnlyModelViewSet):
         my_patient_ids = Appointment.objects.filter(doctor=doctor).values_list('patient_id', flat=True).distinct()
         
         # Return reports for those patients
-        return LabReport.objects.filter(patient_id__in=my_patient_ids)
+        return LabTestReport.objects.filter(patient_id__in=my_patient_ids)
 
 class PrescriptionViewSet(viewsets.ModelViewSet):
     """
@@ -83,7 +84,7 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # A Doctor can only see prescriptions they created
         doctor = Doctor.objects.get(user=self.request.user)
-        return Prescription.objects.filter(doctor=doctor)
+        return MedicinePrescription.objects.filter(doctor=doctor)
 
     def perform_create(self, serializer):
         # Automatically assign the logged-in doctor
@@ -100,9 +101,22 @@ class LabPrescriptionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # A Doctor can only see lab prescriptions they created
         doctor = Doctor.objects.get(user=self.request.user)
-        return LabPrescription.objects.filter(doctor=doctor)
+        return LabTestPrescription.objects.filter(doctor=doctor)
 
     def perform_create(self, serializer):
         # Automatically assign the logged-in doctor
         doctor = Doctor.objects.get(user=self.request.user)
         serializer.save(doctor=doctor)
+
+class DoctorOnlyViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsDoctor, IsAuthenticated]
+    queryset = Doctor.objects.all()
+    serializer_class = None  # Define appropriate serializer
+
+    def get_serializer_class(self):
+        # Return the appropriate serializer for Doctor
+        pass
+    def get_queryset(self):
+        # A Doctor can only see their own profile
+        doctor = Doctor.objects.get(user=self.request.user)
+        return Doctor.objects.filter(id=doctor.id)

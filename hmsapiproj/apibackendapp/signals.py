@@ -70,5 +70,5 @@ def auto_id_billing(sender, instance, **kwargs):
             prefix="B",
             model=Billing,
             field_name="billing_id",
-            length=4 # B0001, B0002, etc.
+            length=3 # B0001, B0002, etc.
         )

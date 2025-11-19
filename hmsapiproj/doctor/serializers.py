@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from apibackendapp.models import (
-    Appointment, Consultation, Medicine, LabTest, LabReport, 
-    Prescription, LabPrescription, Patient, Doctor
+    Appointment, Consultation, Medicine, LabTest, LabTestReport, 
+    MedicinePrescription, LabTestPrescription, Patient, Doctor
 )
 
 # --- Helper Serializers (for Read-Only nested data) ---
@@ -68,7 +68,7 @@ class LabReportDetailSerializer(serializers.ModelSerializer):
     test = SimpleLabTestSerializer(read_only=True)
     
     class Meta:
-        model = LabReport
+        model = LabTestReport
         fields = ['report_id', 'patient', 'test', 'report_file', 'report_date', 'notes']
 
 class PrescriptionSerializer(serializers.ModelSerializer):
@@ -77,7 +77,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     Doctor field is set automatically from the view.
     """
     class Meta:
-        model = Prescription
+        model = MedicinePrescription
         fields = ['prescription_id', 'patient', 'medicine', 'dosage', 'frequency', 'duration', 'notes', 'created_at']
         read_only_fields = ['prescription_id', 'created_at']
 
@@ -96,7 +96,7 @@ class LabPrescriptionSerializer(serializers.ModelSerializer):
     Doctor field is set automatically from the view.
     """
     class Meta:
-        model = LabPrescription
+        model = LabTestPrescription
         fields = ['lab_prescription_id', 'patient', 'lab_test', 'notes', 'created_at']
         read_only_fields = ['lab_prescription_id', 'created_at']
 

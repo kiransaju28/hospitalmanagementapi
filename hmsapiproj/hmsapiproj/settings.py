@@ -45,8 +45,9 @@ INSTALLED_APPS = [
     'doctor',
     'admins',                    # You seemingly renamed 'doctoradmins' to 'admins', which is good
     'reception',
-    # 'rest_framework.authtoken', <--- DELETE THIS LINE (It is a duplicate)
-    'labtec'
+    'labtec',
+    'pharmacy',
+    
 ]
 
 MIDDLEWARE = [
@@ -87,7 +88,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hms_api_proj_2025',
         'USER':'root',
-        'PASSWORD':'Password@123',
+        'PASSWORD':'Plamkoottathil7@',
         'HOST':'localhost',
         'PORT':3306
     }
@@ -135,9 +136,12 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+USER_AUTH_MODEL = 'apibackendapp.SystemUser'
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ),
     # Require authentication by default for all endpoints
     # (You will override this in views if you have a public/login endpoint)

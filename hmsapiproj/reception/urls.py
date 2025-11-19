@@ -14,6 +14,7 @@ router = DefaultRouter()
 router.register(r'patients', PatientViewSet, basename='patient')
 router.register(r'doctors', DoctorViewSet, basename='doctor')
 router.register(r'appointments', AppointmentViewSet, basename='appointment')
+router.register(r'billing', AppointmentViewSet, basename='billing')
 
 # 3. Define the urlpatterns
 # The router includes all generated URLs under the base path
