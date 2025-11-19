@@ -1,68 +1,58 @@
-from django.shortcuts import render
-
-# Create your views here.
-from rest_framework import generics
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
-from apibackendapp.models import (
-    LabTest, LabTestPrescription, LabTestReport,
+from rest_framework import viewsets
+from admins.permissions import Islabtec
+from .models import (
+    LabTestCategory, LabTestParameter, LabReport, LabReportResult, LabBill, LabBillItem
 )
 from .serializers import (
-    LabTestSerializer,
-    LabTestPrescriptionSerializer,
-    LabTestReportSerializer,
+    LabTestCategorySerializer, LabTestParameterSerializer, 
+    LabReportSerializer, LabReportResultSerializer, 
+    LabBillSerializer, LabBillItemSerializer
 )
+from doctor.models import LabTestOrder
+from doctor.serializers import LabTestOrderSerializer
 
-# -----------------------
-# LAB TEST CRUD
-# -----------------------
+# 1. RESTRICTED VIEWS (Read-Only for Technician)
+class LabTestCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    """ Technician can VIEW test types, but NOT create/edit them. """
+    permission_classes = [Islabtec]
+    queryset = LabTestCategory.objects.all()
+    serializer_class = LabTestCategorySerializer
 
-class LabTestListCreateView(generics.ListCreateAPIView):
-    queryset = LabTest.objects.all()
-    serializer_class = LabTestSerializer
+class LabTestParameterViewSet(viewsets.ReadOnlyModelViewSet):
+    """ Technician can VIEW parameters, but NOT create/edit them. """
+    permission_classes = [Islabtec]
+    queryset = LabTestParameter.objects.all()
+    serializer_class = LabTestParameterSerializer
 
+# 2. WORKFLOW VIEWS (Full Access)
 
-class LabTestDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = LabTest.objects.all()
-    serializer_class = LabTestSerializer
-
-
-# -----------------------
-# LAB PRESCRIPTION CRUD
-# -----------------------
-
-from rest_framework.exceptions import PermissionDenied
-
-class LabTestPrescriptionView(generics.ListAPIView):
+class PendingLabTestsViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    Doctor creates prescriptions (only via backend)
-    Lab Technician can only view, not create.
+    Shows all LabTestOrders from doctors.
+    This acts as the Technician's "To-Do List".
     """
-    queryset = LabTestPrescription.objects.all()
-    serializer_class = LabTestPrescriptionSerializer
+    permission_classes = [Islabtec]
+    queryset = LabTestOrder.objects.all().order_by('-id')
+    serializer_class = LabTestOrderSerializer
 
+class LabReportViewSet(viewsets.ModelViewSet):
+    """ Create Reports (Technician's main job) """
+    permission_classes = [Islabtec]
+    queryset = LabReport.objects.all()
+    serializer_class = LabReportSerializer
 
+class LabReportResultViewSet(viewsets.ModelViewSet):
+    permission_classes = [Islabtec]
+    queryset = LabReportResult.objects.all()
+    serializer_class = LabReportResultSerializer
 
-class LabTestPrescriptionDetailView(generics.RetrieveAPIView):
-    """
-    Lab Technician can only view individual prescription.
-    No edits allowed.
-    """
-    queryset = LabTestPrescription.objects.all()
-    serializer_class = LabTestPrescriptionSerializer
+class LabBillViewSet(viewsets.ModelViewSet):
+    """ Create Bills (Separate from Report) """
+    permission_classes = [Islabtec]
+    queryset = LabBill.objects.all()
+    serializer_class = LabBillSerializer
 
-
-
-# -----------------------
-# LAB REPORT GENERATION
-# -----------------------
-
-class LabReportView(APIView):
-    def get(self, request, pk):
-        try:
-            report = LabTestReport.objects.get(report_id=pk)
-            serializer = LabTestReportSerializer(report)
-            return Response(serializer.data)
-        except LabTestReport.DoesNotExist:
-            return Response({"error": "Report not found"}, status=404)
+class LabBillItemViewSet(viewsets.ModelViewSet):
+    permission_classes = [Islabtec]
+    queryset = LabBillItem.objects.all()
+    serializer_class = LabBillItemSerializer

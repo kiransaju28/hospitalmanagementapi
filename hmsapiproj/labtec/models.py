@@ -1,49 +1,89 @@
-
-# Create your models here.
 from django.db import models
-from django.db.models.signals import pre_save
-from django.dispatch import receiver
-from .utils import generate_id
-from apibackendapp.models import (
-    LabTest, LabTestPrescription, Appointment,
-    Patient, LabTestReport, Billing, Staff
-)
 
-# Auto ID for LabTestPrescription
-@receiver(pre_save, sender=LabTestPrescription)
-def auto_id_labtest_prescription(sender, instance, **kwargs):
-    if not instance.lab_test_prescription_id:
-        instance.lab_test_prescription_id = generate_id(
-            prefix="LTP",
-            model=LabTestPrescription,
-            field_name="lab_test_prescription_id"
-        )
+class LabTestCategory(models.Model):
+    # From tbllab_test_category
+    category_name = models.CharField(max_length=30)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
 
-# Auto ID for LabTestReport
-@receiver(pre_save, sender=LabTestReport)
-def auto_id_labtest_report(sender, instance, **kwargs):
-    if not instance.report_id:
-        instance.report_id = generate_id(
-            prefix="RPT",
-            model=LabTestReport,
-            field_name="report_id"
-        )
+    def __str__(self):
+        return self.category_name
 
-# Auto ID for Billing
-@receiver(pre_save, sender=Billing)
-def auto_id_billing(sender, instance, **kwargs):
-    if not instance.bill_id:
-        instance.bill_id = generate_id(
-            prefix="BIL",
-            model=Billing,
-            field_name="bill_id"
-        )
+class LabTestParameter(models.Model):
+    # From tbllab_test_parameter
+    category = models.ForeignKey(
+        LabTestCategory, 
+        on_delete=models.CASCADE, 
+        related_name="parameters"
+    )
+    parameter_key = models.CharField(max_length=10)
+    label = models.CharField(max_length=20)
+    normal_range = models.CharField(max_length=20)
 
-@receiver(pre_save, sender=LabTest)
-def auto_id_labtest(sender, instance, **kwargs):
-    if not instance.lab_test_id:
-        instance.lab_test_id = generate_id(
-            prefix="LT",
-            model=LabTest,
-            field_name="lab_test_id"
-        )
+    def __str__(self):
+        return f"{self.category.category_name} - {self.label}"
+
+class LabReport(models.Model):
+    # From tblLab_Report
+    appointment = models.ForeignKey(
+        'reception.Appointment', 
+        on_delete=models.CASCADE
+    )
+    patient = models.ForeignKey(
+        'reception.Patient', 
+        on_delete=models.CASCADE
+    )
+    category = models.ForeignKey(
+        LabTestCategory, 
+        on_delete=models.PROTECT 
+    )
+    report_date = models.DateField(auto_now_add=True)
+    remarks = models.CharField(max_length=30, null=True, blank=True)
+    sample_collected = models.BooleanField(default=False)
+    
+    # --- FIELD REMOVED ---
+    # bill_amount = models.DecimalField(max_digits=10, decimal_places=2) - REMOVED
+
+    def __str__(self):
+        return f"Lab Report for {self.patient.patient_name} ({self.category.category_name})"
+
+class LabReportResult(models.Model):
+    # From tbllab_report_result
+    lab_report = models.ForeignKey(
+        LabReport, 
+        on_delete=models.CASCADE, 
+        related_name="results"
+    )
+    parameter = models.ForeignKey(
+        LabTestParameter, 
+        on_delete=models.PROTECT
+    )
+    value = models.CharField(max_length=20)
+
+    def __str__(self):
+        return f"{self.lab_report.id} - {self.parameter.label}: {self.value}"
+
+# --- NEW MODELS ADDED ---
+class LabBill(models.Model):
+    """
+    The "Header" for a lab bill. It is linked to the appointment
+    and can contain multiple lab test items.
+    """
+    appointment = models.ForeignKey('reception.Appointment', on_delete=models.CASCADE)
+    patient = models.ForeignKey('reception.Patient', on_delete=models.CASCADE)
+    bill_date = models.DateTimeField(auto_now_add=True)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"Lab Bill for {self.patient.patient_name} (Appt: {self.appointment.id})"
+
+class LabBillItem(models.Model):
+    """
+    A single "Line Item" on a lab bill.
+    Links one bill to one specific lab test.
+    """
+    bill = models.ForeignKey(LabBill, on_delete=models.CASCADE, related_name="items")
+    test = models.ForeignKey(LabTestCategory, on_delete=models.PROTECT) # The test being billed
+    price = models.DecimalField(max_digits=10, decimal_places=2) # Price at time of billing
+
+    def __str__(self):
+        return f"{self.test.category_name} for Bill {self.bill.id}"

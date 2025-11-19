@@ -1,22 +1,29 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import views
+from .views import (
+    BasicVitalsViewSet, 
+    ConsultationViewSet, 
+    PrescriptionItemViewSet, 
+    LabTestOrderViewSet,
+    MyTodayAppointmentsViewSet,  # <-- Imported
+    PatientHistoryView           # <-- Imported
+)
 
-# Create a router and register our viewsets with it.
 router = DefaultRouter()
+router.register(r'basic-vitals', BasicVitalsViewSet)
+router.register(r'consultations', ConsultationViewSet)
+router.register(r'prescription-items', PrescriptionItemViewSet)
+router.register(r'lab-test-orders', LabTestOrderViewSet)
+# This creates the URL: /api/doctor/my-today-appointments/
+router.register(r'my-today-appointments', MyTodayAppointmentsViewSet, basename='my-today-appointments')
 
-# Read-Only Views
-router.register(r'my-appointments', views.DoctorAppointmentViewSet, basename='doctor-appointments')
-router.register(r'lab-reports', views.LabReportViewSet, basename='doctor-lab-reports')
-router.register(r'medicines-list', views.MedicineListViewSet, basename='medicines-list')
-router.register(r'lab-tests-list', views.LabTestListViewSet, basename='lab-tests-list')
-
-# CRUD Views
-router.register(r'consultations', views.ConsultationViewSet, basename='doctor-consultations')
-router.register(r'prescriptions', views.PrescriptionViewSet, basename='doctor-prescriptions')
-router.register(r'lab-prescriptions', views.LabPrescriptionViewSet, basename='doctor-lab-prescriptions')
-
-# The API URLs are now determined automatically by the router.
 urlpatterns = [
     path('', include(router.urls)),
+    
+    # This creates the URL: /api/doctor/patient-history/<id>/
+    path(
+        'patient-history/<int:id>/', 
+        PatientHistoryView.as_view(), 
+        name='patient-history'
+    ),
 ]

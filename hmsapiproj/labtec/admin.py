@@ -1,11 +1,10 @@
-
+from django.contrib import admin
+from .models import LabTestCategory, LabTestParameter, LabReport, LabReportResult,LabBill,LabBillItem
 
 # Register your models here.
-from django.contrib import admin
-from apibackendapp.models import (
-    LabTest, LabTestPrescription, LabTestReport
-)
-
-admin.site.register(LabTest)
-admin.site.register(LabTestPrescription)
-admin.site.register(LabTestReport)
+admin.site.register(LabTestCategory)
+admin.site.register(LabTestParameter)
+admin.site.register(LabReport)
+admin.site.register(LabReportResult)
+admin.site.register(LabBill)
+admin.site.register(LabBillItem)

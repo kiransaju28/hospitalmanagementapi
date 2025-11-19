@@ -1,155 +1,83 @@
-from django.shortcuts import render
-from rest_framework import viewsets, status
-from rest_framework.views import APIView
+# In admins/views.py
+
+from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.models import User
-from django.contrib.auth import authenticate
+from .permissions import IsAdmin  # Use our new Admin permission
+from .serializers import UserRegistrationSerializer, StaffDetailSerializer, DoctorDetailSerializer
+from .models import Staff, Doctor
 
-# --- CORRECT IMPORT: Import models from apibackendapp ---
-from apibackendapp.models import Staff, Specialization, Doctor
+# --- Imports from other apps ---
+# We need the models and serializers to re-use them
+from reception.models import Patient
+from labtec.models import LabTestCategory, LabTestParameter
+from doctor.serializers import PatientHistorySerializer 
+from labtec.serializers import LabTestCategorySerializer, LabTestParameterSerializer 
 
-from .serializers import (
-    StaffSerializer, 
-    SpecializationSerializer, 
-    DoctorSerializer,
-    UserSerializer,
-    SignupSerializer,
-    LoginSerializer
-)
 
-from .permissions import (
-    AdminOnlyPermissions,
-    StaffManagementPermissions,
-    DoctorSelfViewPermissions
-)
-
-# --- Helper Function to Generate Tokens ---
-def get_tokens_for_user(user):
-    refresh = RefreshToken.for_user(user)
-    return {
-        'refresh': str(refresh),
-        'access': str(refresh.access_token),
-    }
+class UserRegistrationView(generics.CreateAPIView):
+    """
+    Endpoint for an Admin to create a new User, Staff, and (if applicable) Doctor.
+    URL: /api/admins/register-user/
+    """
+    permission_classes = [IsAdmin]
+    serializer_class = UserRegistrationSerializer
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            {"message": f"User '{user.username}' created successfully as a {request.data['role']}."},
+            status=status.HTTP_201_CREATED
+        )
 
 class StaffViewSet(viewsets.ModelViewSet):
+    """ Read-only endpoint for viewing all staff. """
+    permission_classes = [IsAdmin]
     queryset = Staff.objects.all()
-    serializer_class = StaffSerializer
-    
-    def get_permissions(self):
-        """
-        Allow any user to POST (Sign up as Staff).
-        Restrict other actions based on StaffManagementPermissions.
-        """
-        if self.action == 'create':
-            return [AllowAny()]
-        return [StaffManagementPermissions()]
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        # Save the Staff instance (which also creates the User via serializer logic)
-        staff_instance = serializer.save()
-        
-        # Generate Tokens for the newly created user
-        user = staff_instance.user
-        tokens = get_tokens_for_user(user)
-        
-        # Prepare custom response
-        response_data = serializer.data
-        response_data['tokens'] = tokens
-        response_data['role'] = "Staff"
-        
-        headers = self.get_success_headers(serializer.data)
-        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
-
-class SpecializationViewSet(viewsets.ModelViewSet):
-    queryset = Specialization.objects.all()
-    serializer_class = SpecializationSerializer
-    permission_classes = [StaffManagementPermissions]
+    serializer_class = StaffDetailSerializer
 
 class DoctorViewSet(viewsets.ModelViewSet):
+    """ Read-only endpoint for viewing all doctors. """
+    permission_classes = [IsAdmin]
     queryset = Doctor.objects.all()
-    serializer_class = DoctorSerializer
+    serializer_class = DoctorDetailSerializer
 
-    def get_permissions(self):
-        """
-        Allow any user to POST (Sign up as Doctor).
-        Restrict other actions based on DoctorSelfViewPermissions.
-        """
-        if self.action == 'create':
-            return [AllowAny()]
-        return [DoctorSelfViewPermissions()]
+from rest_framework import viewsets, generics, status
+from rest_framework.response import Response
+from .permissions import IsAdmin
+from .serializers import (
+    UserRegistrationSerializer, StaffSerializer, DoctorSerializer, 
+    DepartmentSerializer, AdminPatientHistorySerializer 
+)
+from .models import Staff, Doctor, Department
+from reception.models import Patient
+from labtec.models import LabTestCategory, LabTestParameter
+from labtec.serializers import LabTestCategorySerializer, LabTestParameterSerializer 
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        # Save the Doctor instance
-        doctor_instance = serializer.save()
-        
-        # Generate Tokens
-        user = doctor_instance.user
-        tokens = get_tokens_for_user(user)
-        
-        # Prepare custom response
-        response_data = serializer.data
-        response_data['tokens'] = tokens
-        response_data['role'] = "Doctor"
-        
-        headers = self.get_success_headers(serializer.data)
-        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
+# ... (User Registration, Staff, Doctor, Department views stay the same) ...
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [AdminOnlyPermissions] 
+class AdminPatientHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Read-only endpoint for admins.
+    Shows Medical History + BILLING HISTORY.
+    """
+    permission_classes = [IsAdmin]
+    queryset = Patient.objects.all()
+    serializer_class = AdminPatientHistorySerializer # <-- Uses the serializer WITH bills
 
-# Generic Signup (for simple users, if needed)
-class SignupApiView(APIView):
-    permission_classes = [AllowAny]
+class AdminLabTestCategoryViewSet(viewsets.ModelViewSet):
+    """
+    FULL CONTROL: Admin can Create, Update, Delete Lab Tests.
+    """
+    permission_classes = [IsAdmin]
+    queryset = LabTestCategory.objects.all()
+    serializer_class = LabTestCategorySerializer 
 
-    def post(self, request):
-        serializer = SignupSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            tokens = get_tokens_for_user(user)
-            group_name = user.groups.first().name if user.groups.exists() else None
-            
-            return Response({
-                "user_id": user.id,
-                "username": user.username,
-                "role": group_name,
-                **tokens
-            }, status=status.HTTP_201_CREATED)
-        return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
-class LoginAPIView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            # authenticate checks username/password
-            user = authenticate(
-                request, 
-                username=serializer.validated_data["username"], 
-                password=serializer.validated_data["password"]
-            )
-            
-            if user:
-                tokens = get_tokens_for_user(user)
-                group_name = user.groups.first().name if user.groups.exists() else None
-                
-                return Response({
-                    "status": status.HTTP_200_OK,
-                    "message": "Login successful",
-                    "username": user.username,
-                    "role": group_name, 
-                    "tokens": tokens
-                }, status=status.HTTP_200_OK)
-            
-            return Response({"message": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class AdminLabTestParameterViewSet(viewsets.ModelViewSet):
+    """
+    FULL CONTROL: Admin can Create, Update, Delete Parameters.
+    """
+    permission_classes = [IsAdmin]
+    queryset = LabTestParameter.objects.all()
+    serializer_class = LabTestParameterSerializer

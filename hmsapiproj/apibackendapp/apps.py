@@ -1,9 +1,0 @@
-from django.apps import AppConfig
-
-
-class ApibackendappConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'apibackendapp'
-    # NEW: This method ensures signals.py is loaded when the app starts.
-    def ready(self):
-        import apibackendapp.signals

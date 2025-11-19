@@ -39,14 +39,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'apibackendapp',
-    'rest_framework.authtoken',  # Keep this one
-    'rest_framework_simplejwt',
+    'admins',
     'doctor',
-    'admins',                    # You seemingly renamed 'doctoradmins' to 'admins', which is good
+    'labtec',
+    'pharmacist',
     'reception',
-    # 'rest_framework.authtoken', <--- DELETE THIS LINE (It is a duplicate)
-    'labtec'
+    'rest_framework.authtoken',
 ]
 
 MIDDLEWARE = [
@@ -138,24 +136,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    # Require authentication by default for all endpoints
-    # (You will override this in views if you have a public/login endpoint)
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
-    
-    # Optional: Enable pagination for large lists (like patients)
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 100
+    )
 }
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': True, # New refresh token is issued when refreshing
-    
-    # Authentication header settings
-    'AUTH_HEADER_TYPES': ('Bearer',), # API requests will use 'Authorization: Bearer <token>'
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION'
 }

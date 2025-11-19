@@ -1,98 +1,181 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User, Group
-from django.contrib.auth.hashers import make_password
-from apibackendapp.models import Staff, Specialization, Doctor
+from .models import Staff, Doctor, Department
+from reception.models import ConsultationBill
+from labtec.models import LabBill
+from pharmacist.models import pharmacistBill
 
-# Basic User Serializer for nested display
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'email']
+# --- Import the Doctor's History Serializer ---
+from doctor.serializers import PatientHistorySerializer
 
-# Helper serializer to accept registration data inside Doctor/Staff payloads
-class UserRegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
-    
-    class Meta:
-        model = User
-        fields = ['username', 'password', 'email']
+ROLE_CHOICES = (
+    ('Doctor', 'Doctor'),
+    ('reception', 'reception'),
+    ('labtec', 'labtec'),
+    ('Pharmacist', 'Pharmacist'),
+)
 
-class StaffSerializer(serializers.ModelSerializer):
-    # Nest the registration serializer for creating; use UserSerializer for reading if needed
-    user = UserRegistrationSerializer(write_only=True)
-    user_details = UserSerializer(source='user', read_only=True)
-
-    class Meta:
-        model = Staff
-        fields = ['staff_id', 'fullname', 'gender', 'joining_date', 'mail_id', 'mobileno', 'user', 'user_details']
-
-    def create(self, validated_data):
-        # 1. Extract user data
-        user_data = validated_data.pop('user')
-        
-        # 2. Create the User
-        user = User.objects.create_user(**user_data)
-        
-        # 3. Assign to 'Staff' Group
-        group, _ = Group.objects.get_or_create(name='Staff')
-        user.groups.add(group)
-        
-        # 4. Create the Staff profile linked to the new user
-        staff_instance = Staff.objects.create(user=user, **validated_data)
-        
-        return staff_instance
-
-class SpecializationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Specialization
-        fields = '__all__'
-
-class DoctorSerializer(serializers.ModelSerializer):
-    user = UserRegistrationSerializer(write_only=True)
-    user_details = UserSerializer(source='user', read_only=True)
-    
-    class Meta:
-        model = Doctor
-        fields = ['doctor_id', 'name', 'contact_info', 'consultation_fee', 'specialization', 'user', 'user_details']
-
-    def create(self, validated_data):
-        # 1. Extract user data
-        user_data = validated_data.pop('user')
-        
-        # 2. Create the User
-        user = User.objects.create_user(**user_data)
-        
-        # 3. Assign to 'Doctor' Group
-        group, _ = Group.objects.get_or_create(name='Doctor')
-        user.groups.add(group)
-        
-        # 4. Create the Doctor profile linked to the new user
-        doctor_instance = Doctor.objects.create(user=user, **validated_data)
-        
-        return doctor_instance
-
-# --- AUTH SERIALIZERS ---
-
-class SignupSerializer(serializers.ModelSerializer):
-    group_name = serializers.CharField(write_only=True, required=False)
-
-    class Meta:
-        model = User
-        fields = ['username', 'password', 'email', 'group_name']
-        extra_kwargs = {'password': {'write_only': True}}
-
-    def create(self, validated_data):
-        group_name = validated_data.pop("group_name", None)
-        
-        # Create user using the helper method which hashes password
-        user = User.objects.create_user(**validated_data)
-
-        if group_name:
-            group, _ = Group.objects.get_or_create(name=group_name)
-            user.groups.add(group)
-        
-        return user
-
-class LoginSerializer(serializers.Serializer):
+class UserRegistrationSerializer(serializers.Serializer):
+    """
+    Special serializer to create a new User, Staff, 
+    and (if needed) Doctor, all at once.
+    """
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
+    role = serializers.ChoiceField(choices=ROLE_CHOICES)
+    
+    # Staff fields
+    full_name = serializers.CharField()
+    gender = serializers.CharField()
+    joining_date = serializers.DateField()
+    mobile_number = serializers.CharField()
+    
+    # Doctor fields (optional)
+    consultation_fee = serializers.IntegerField(required=False, allow_null=True)
+    designation = serializers.CharField(required=False, allow_null=True, max_length=20)
+    availability = serializers.CharField(required=False, allow_null=True, max_length=30)
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(), 
+        required=False, 
+        allow_null=True
+    )
+
+    def validate(self, data):
+        if data['role'] == 'Doctor':
+            if (not data.get('consultation_fee') or 
+                not data.get('designation') or 
+                not data.get('department') or
+                not data.get('availability')):
+                raise serializers.ValidationError(
+                    "Doctor role requires consultation_fee, designation, availability, and department."
+                )
+        if User.objects.filter(username=data['username']).exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return data
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            password=validated_data['password']
+        )
+        role_name = validated_data['role']
+        group, _ = Group.objects.get_or_create(name=role_name)
+        user.groups.add(group)
+        
+        staff = Staff.objects.create(
+            user=user,
+            full_name=validated_data['full_name'],
+            gender=validated_data['gender'],
+            joining_date=validated_data['joining_date'],
+            mobile_number=validated_data['mobile_number']
+        )
+        
+        if role_name == 'Doctor':
+            Doctor.objects.create(
+                staff=staff,
+                consultation_fee=validated_data['consultation_fee'],
+                designation=validated_data['designation'],
+                department=validated_data['department'],
+                availability=validated_data['availability']
+            )
+        return user
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ['id', 'department_name']
+
+class StaffSerializer(serializers.ModelSerializer): # <-- THIS IS THE CLASS YOUR ERROR WAS MISSING
+    """ 
+    Serializer for viewing and editing Staff details.
+    """
+    username = serializers.CharField(source='user.username', read_only=True)
+    role = serializers.CharField(source='user.groups.first.name', read_only=True)
+    
+    class Meta:
+        model = Staff
+        fields = ['id', 'full_name', 'gender', 'joining_date', 'mobile_number', 'username', 'role']
+        read_only_fields = ['username', 'role']
+
+class StaffDetailSerializer(serializers.ModelSerializer):
+    """ Read-only view for Staff details """
+    username = serializers.CharField(source='user.username', read_only=True)
+    role = serializers.CharField(source='user.groups.first.name', read_only=True)
+    
+    class Meta:
+        model = Staff
+        fields = ['id', 'full_name', 'username', 'role', 'mobile_number', 'joining_date']
+
+class DoctorSerializer(serializers.ModelSerializer):
+    """ 
+    Serializer for viewing and editing Doctor details.
+    """
+    staff = StaffSerializer(read_only=True) 
+    staff_id = serializers.PrimaryKeyRelatedField(
+        queryset=Staff.objects.all(), 
+        source='staff', 
+        write_only=True
+    )
+    department_id = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(), 
+        source='department', 
+        write_only=True
+    )
+    department = DepartmentSerializer(read_only=True)
+
+    class Meta:
+        model = Doctor
+        fields = [
+            'id', 
+            'staff', 
+            'staff_id',
+            'consultation_fee', 
+            'designation', 
+            'availability',
+            'department', 
+            'department_id' 
+        ]
+
+class DoctorDetailSerializer(serializers.ModelSerializer):
+    """ Read-only view for Doctor details """
+    staff = StaffDetailSerializer(read_only=True)
+    department_name = serializers.CharField(source='department.department_name', read_only=True)
+
+    class Meta:
+        model = Doctor
+        fields = ['id', 'staff', 'consultation_fee', 'designation', 'availability', 'department_name']
+
+# --- BILLING SERIALIZERS ---
+
+class SimpleConsultationBillSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConsultationBill
+        fields = ['bill_date', 'amount']
+
+class SimpleLabBillSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LabBill
+        fields = ['bill_date', 'total_amount']
+
+# --- ADD THIS NEW CLASS ---
+class SimplepharmacistBillSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = pharmacistBill
+        fields = ['bill_date', 'total_amount']
+
+# --- ADMIN/reception PATIENT HISTORY ---
+
+class AdminPatientHistorySerializer(PatientHistorySerializer):
+    """
+    Inherits from Doctor's serializer but ADDS billing information.
+    Used for Admin and reception.
+    """
+    consultation_bills = SimpleConsultationBillSerializer(many=True, read_only=True, source='consultationbill_set')
+    lab_bills = SimpleLabBillSerializer(many=True, read_only=True, source='labbill_set')
+    
+    # --- ADD THIS LINE ---
+    pharmacist_bills = SimplepharmacistBillSerializer(many=True, read_only=True, source='pharmacistbill_set')
+
+    class Meta(PatientHistorySerializer.Meta):
+        # --- UPDATE THIS LIST ---
+        fields = PatientHistorySerializer.Meta.fields + ['consultation_bills', 'lab_bills', 'pharmacist_bills']

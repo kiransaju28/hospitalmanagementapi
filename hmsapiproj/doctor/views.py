@@ -1,108 +1,65 @@
-from rest_framework import viewsets, mixins
-from rest_framework.permissions import IsAuthenticated
-from .permissions import IsDoctorUser
+from rest_framework import viewsets, generics
+from .models import BasicVitals, Consultation, PrescriptionItem, LabTestOrder
 from .serializers import (
-    AppointmentDetailSerializer, ConsultationSerializer, LabReportDetailSerializer,
-    PrescriptionSerializer, LabPrescriptionSerializer, SimpleMedicineSerializer, SimpleLabTestSerializer
+    BasicVitalsSerializer, 
+    ConsultationSerializer, 
+    PrescriptionItemSerializer, 
+    LabTestOrderSerializer,
+    PatientHistorySerializer
 )
-from apibackendapp.models import (
-    Appointment, Consultation, Medicine, LabTest, LabReport, 
-    Prescription, LabPrescription, Doctor
-)
+from admins.permissions import IsDoctor
+import datetime
+from reception.models import Appointment, Patient
+from reception.serializers import AppointmentSerializer 
 
-class DoctorAppointmentViewSet(viewsets.ReadOnlyModelViewSet):
+class MyTodayAppointmentsViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    (Read-Only) Viewset for a Doctor to see THEIR appointments.
+    Shows the logged-in doctor THEIR appointments for TODAY.
     """
-    serializer_class = AppointmentDetailSerializer
-    permission_classes = [IsAuthenticated, IsDoctorUser]
-
+    permission_classes = [IsDoctor]
+    serializer_class = AppointmentSerializer
+    
     def get_queryset(self):
-        # Get the Doctor profile linked to the logged-in user
-        doctor = Doctor.objects.get(user=self.request.user)
-        # Return only appointments assigned to this doctor
-        return Appointment.objects.filter(doctor=doctor)
+        user = self.request.user
+        today = datetime.date.today()
+        
+        # Safety check: Is this user actually a doctor?
+        if not hasattr(user, 'staff') or not hasattr(user.staff, 'doctor'):
+             return Appointment.objects.none()
+
+        # Filter: Appointments for THIS doctor on THIS day
+        return Appointment.objects.filter(
+            doctor=user.staff.doctor, 
+            appointment_date__date=today
+        ).order_by('appointment_date')
+
+class PatientHistoryView(generics.RetrieveAPIView):
+    """
+    Shows complete medical history for one patient.
+    """
+    permission_classes = [IsDoctor]
+    queryset = Patient.objects.all()
+    serializer_class = PatientHistorySerializer
+    lookup_field = 'id' 
+
+# --- STANDARD CRUD VIEWS ---
+
+class BasicVitalsViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsDoctor]
+    queryset = BasicVitals.objects.all()
+    serializer_class = BasicVitalsSerializer
 
 class ConsultationViewSet(viewsets.ModelViewSet):
-    """
-    (CRUD) Viewset for a Doctor to manage Consultations.
-    """
+    permission_classes = [IsDoctor]
+    queryset = Consultation.objects.all()
     serializer_class = ConsultationSerializer
-    permission_classes = [IsAuthenticated, IsDoctorUser]
 
-    def get_queryset(self):
-        # A Doctor can only see consultations they created
-        doctor = Doctor.objects.get(user=self.request.user)
-        return Consultation.objects.filter(doctor=doctor)
+class PrescriptionItemViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsDoctor]
+    queryset = PrescriptionItem.objects.all()
+    serializer_class = PrescriptionItemSerializer
 
-    def perform_create(self, serializer):
-        # Automatically assign the logged-in doctor when creating
-        doctor = Doctor.objects.get(user=self.request.user)
-        serializer.save(doctor=doctor)
-
-class MedicineListViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    (Read-Only) Viewset for Doctors to see all available Medicines.
-    """
-    queryset = Medicine.objects.all()
-    serializer_class = SimpleMedicineSerializer
-    permission_classes = [IsAuthenticated, IsDoctorUser]
-
-class LabTestListViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    (Read-Only) Viewset for Doctors to see all available Lab Tests.
-    """
-    queryset = LabTest.objects.all()
-    serializer_class = SimpleLabTestSerializer
-    permission_classes = [IsAuthenticated, IsDoctorUser]
-
-class LabReportViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    (Read-Only) Viewset for a Doctor to see Lab Reports for THEIR patients.
-    """
-    serializer_class = LabReportDetailSerializer
-    permission_classes = [IsAuthenticated, IsDoctorUser]
-
-    def get_queryset(self):
-        # Get the Doctor profile
-        doctor = Doctor.objects.get(user=self.request.user)
-        
-        # Get IDs of all patients who have an appointment with this doctor
-        my_patient_ids = Appointment.objects.filter(doctor=doctor).values_list('patient_id', flat=True).distinct()
-        
-        # Return reports for those patients
-        return LabReport.objects.filter(patient_id__in=my_patient_ids)
-
-class PrescriptionViewSet(viewsets.ModelViewSet):
-    """
-    (CRUD) Viewset for a Doctor to manage Medicine Prescriptions.
-    """
-    serializer_class = PrescriptionSerializer
-    permission_classes = [IsAuthenticated, IsDoctorUser]
-
-    def get_queryset(self):
-        # A Doctor can only see prescriptions they created
-        doctor = Doctor.objects.get(user=self.request.user)
-        return Prescription.objects.filter(doctor=doctor)
-
-    def perform_create(self, serializer):
-        # Automatically assign the logged-in doctor
-        doctor = Doctor.objects.get(user=self.request.user)
-        serializer.save(doctor=doctor)
-
-class LabPrescriptionViewSet(viewsets.ModelViewSet):
-    """
-    (CRUD) Viewset for a Doctor to manage Lab Test Prescriptions.
-    """
-    serializer_class = LabPrescriptionSerializer
-    permission_classes = [IsAuthenticated, IsDoctorUser]
-
-    def get_queryset(self):
-        # A Doctor can only see lab prescriptions they created
-        doctor = Doctor.objects.get(user=self.request.user)
-        return LabPrescription.objects.filter(doctor=doctor)
-
-    def perform_create(self, serializer):
-        # Automatically assign the logged-in doctor
-        doctor = Doctor.objects.get(user=self.request.user)
-        serializer.save(doctor=doctor)
+class LabTestOrderViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsDoctor]
+    queryset = LabTestOrder.objects.all()
+    serializer_class = LabTestOrderSerializer

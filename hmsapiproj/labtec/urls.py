@@ -1,18 +1,22 @@
-from django.urls import path
+# In labtec/urls.py
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from .views import (
-    LabTestListCreateView,
-    LabTestDetailView,
-    LabTestPrescriptionView,
-    LabTestPrescriptionDetailView,
-    LabReportView,
+    LabTestCategoryViewSet, LabTestParameterViewSet, 
+    LabReportViewSet, LabReportResultViewSet, 
+    LabBillViewSet, LabBillItemViewSet,
+    PendingLabTestsViewSet # <-- Add this
 )
 
+router = DefaultRouter()
+router.register(r'test-categories', LabTestCategoryViewSet)
+router.register(r'test-parameters', LabTestParameterViewSet)
+router.register(r'lab-reports', LabReportViewSet)
+router.register(r'lab-report-results', LabReportResultViewSet)
+router.register(r'lab-bills', LabBillViewSet)
+router.register(r'lab-bill-items', LabBillItemViewSet)
+router.register(r'pending-tests', PendingLabTestsViewSet, basename='pending-tests') # <-- Add this
+
 urlpatterns = [
-    path('labtests/', LabTestListCreateView.as_view(), name="labtest-list"),
-    path('labtests/<str:pk>/', LabTestDetailView.as_view(), name="labtest-detail"),
-
-    path('prescriptions/', LabTestPrescriptionView.as_view(), name="labtest-prescription"),
-    path('prescriptions/<str:pk>/', LabTestPrescriptionDetailView.as_view(), name="labtest-prescription-detail"),
-
-    path('report/<str:pk>/', LabReportView.as_view(), name="labtest-report"),
+    path('', include(router.urls)),
 ]
