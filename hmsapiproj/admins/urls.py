@@ -11,6 +11,11 @@ from .views import (
     AdminLabTestParameterViewSet
 )
 
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,    
+    TokenRefreshView,
+)
+
 # The router automatically creates all the ViewSet URLs
 router = DefaultRouter()
 #router.register(r'departments', DepartmentViewSet, basename='departments') # <-- NEW: Add this line

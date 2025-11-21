@@ -26,4 +26,5 @@ urlpatterns = [
         PatientHistoryView.as_view(), 
         name='patient-history'
     ),
+    
 ]
